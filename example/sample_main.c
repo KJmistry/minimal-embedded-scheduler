@@ -55,6 +55,11 @@ static cI64_t gBeginTime = 0;
  *****************************************************************************/
 static void waitNextTick(void);
 
+// TODO :
+// Add enum to str for status code
+// Move dynamic wait inside scheduler after verifying use
+// Add Task Timers feature (in same or separate file)
+
 /*****************************************************************************
  * FUNCTION DEFINATIONS
  *****************************************************************************/
@@ -66,7 +71,7 @@ static void waitNextTick(void);
  */
 int main(int argc, char** argv)
 {
-    cStatus_e nmSts;
+    cStatus_e cStatus;
 
     // Initialize task scheduler to manage tasks of main thread
     if (c_FALSE == Scheduler_Init(TIMER_TICK_RESOLUTION_IN_MS))
@@ -75,11 +80,11 @@ int main(int argc, char** argv)
     }
 
 
-    // nmSts = Scheduler_RegisterTask(TaskTimer_Tick, TIME_INTERVAL_100MS);
+    // cStatus = Scheduler_RegisterTask(TaskTimer_Tick, TIME_INTERVAL_100MS);
 
-    // if (cStatus_SUCCESS != nmSts)
+    // if (cStatus_SUCCESS != cStatus)
     // {
-    //     EPRINT("failed to register timer task: [nmSts=%s]", ENUM_TO_STR_NMSTS(nmSts));
+    //     EPRINT("failed to register timer task: [nmSts=%s]", ENUM_TO_STR_NMSTS(cStatus));
     //     // return (-1);
     // }
 
