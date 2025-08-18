@@ -17,6 +17,7 @@
 #include "common_def.h"
 #include "common_utils.h"
 #include "scheduler.h"
+#include "taskTimer.h"
 
 /*****************************************************************************
  * MACROS
@@ -49,6 +50,12 @@ static void waitNextTick(void);
 // Add enum to str for status code
 // Add Task Timers feature (in same or separate file)
 
+/* Example: TaskTimer single-shot timer callback */
+static void ExampleTimerCallback(void *userData)
+{
+    IPRINT("example timer callback fired! userData=%s", (cChar*)userData);
+}
+
 /*****************************************************************************
  * FUNCTION DEFINATIONS
  *****************************************************************************/
@@ -63,44 +70,53 @@ int main(int argc, char** argv)
     cStatus_e cStatus;
     cU32_t maxPermittedDelayMs = MAX_PERMITTED_DELAY;
 
-    // Initialize task scheduler to manage tasks of main thread
+    /* Initialize task scheduler to manage tasks of main thread */
     if (c_FALSE == Scheduler_Init(TIMER_TICK_RESOLUTION_IN_MS, &maxPermittedDelayMs))
     {
         EPRINT("failed to initialize scheduler");
         return (-1);
     }
 
-    // cStatus = Scheduler_RegisterTask(TaskTimer_Tick, TIME_INTERVAL_100MS);
-    // if (cStatus_SUCCESS != cStatus)
-    // {
-    //     EPRINT("failed to register timer task: [nmSts=%s]", ENUM_TO_STR_NMSTS(cStatus));
-    //     // return (-1);
-    // }
+    /* Initialize TaskTimer module */
+    TaskTimer_Init();
 
-    DPRINT("scheduled tasks registered successfully");
+    /* Register TaskTimer_Tick to run every 100ms */
+    cStatus = Scheduler_RegisterTask(TaskTimer_Tick, TIME_INTERVAL_100MS);
+    if (cStatus_SUCCESS != cStatus)
+    {
+        EPRINT("failed to register timer task: [nmSts=%s]", ENUM_TO_STR_cStatus(cStatus));
+        return (-1);
+    }
 
-    // Reset the Timer to measure the correct time from now...
+    /* Reset the Timer to measure the correct time from now */
     Scheduler_Reset();
+
+    /* Example usage: Start a single-shot timer that expires after 5000ms */
+    TaskTimer_t exampleTimer;
+    TaskTimer_Start(&exampleTimer, 5000, ExampleTimerCallback, "USER DATA");
 
     DPRINT("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     DPRINT("START MAIN LOOP");
     DPRINT("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 
-    // Run daemon super loop
+    /* Run super loop */
     while (gRunSuperLoopF)
     {
-        // Read the RTC continuously
+        /* Read the RTC continuously */
         Scheduler_UpdateTick();
 
-        // Execute the Queued Tasks
+        /* Execute the Queued Tasks */
         Scheduler_ExecuteTasksReadyToRun();
 
-        // Dynamic Sleep that can be min 10 ms
+        /* Dynamic Sleep that can be min 10 ms */
         Utils_SleepNanoSec(Scheduler_GetDynamicSleep());
     }
 
-    // Deregister timer task
-    // Scheduler_DeregisterTask(TaskTimer_Tick);
+    /* Deregister timer task */
+    Scheduler_DeregisterTask(TaskTimer_Tick);
+
+    /* Stop example timer if still running */
+    TaskTimer_Stop(&exampleTimer);
 
     return 0;
 }

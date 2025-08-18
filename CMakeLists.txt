@@ -39,3 +39,9 @@ set_target_properties(sample_example.bin PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${
 
 # Install the example binary to bin folder
 install(TARGETS sample_example.bin RUNTIME DESTINATION ${CMAKE_SOURCE_DIR}/bin)
+
+# Custom clean target to remove build, bin, and install directories
+add_custom_target(extra_clean
+    COMMAND rm -rf "${CMAKE_SOURCE_DIR}/build" "${CMAKE_SOURCE_DIR}/bin" "${CMAKE_SOURCE_DIR}/install"
+    COMMENT "Removing build/, bin/, and install/ directories"
+)

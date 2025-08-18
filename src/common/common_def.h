@@ -44,6 +44,9 @@
 #define WPRINT(fmt, ...) __PRINT_WITH_COLOR(COLOR_YELLOW, fmt, ##__VA_ARGS__)
 #define EPRINT(fmt, ...) __PRINT_WITH_COLOR(COLOR_RED, fmt, ##__VA_ARGS__)
 
+// Convert enums to string
+#define ENUM_TO_STR_cStatus(x) EnumToStr_cStatus_e(x)
+
 // Case to string conversion using token pasting with skipping common prefix of enum
 #define	CASE_TO_STR(x, skip) case x: return (#x + skip);
 
@@ -61,6 +64,11 @@
 
 // Nanosecond per millisecond
 #define NANO_SECONDS_PER_MILLI_SECOND (1000000LL)
+
+/*****************************************************************************
+ * FUNCTION DECLARATIONS
+ *****************************************************************************/
+const cChar* EnumToStr_cStatus_e(cStatus_e cStatus);
 
 /*****************************************************************************
  * @END OF FILE

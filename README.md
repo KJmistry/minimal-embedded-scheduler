@@ -7,17 +7,17 @@ Designed for simplicity, portability, and ease of integration.
 
 - Register, deregister, and execute periodic tasks with configurable intervals (10ms, 20ms, 100ms, 1s, 1min).
 - Efficient tick-based scheduling suitable for resource-constrained environments.
-- Custom type definitions for portability.
 - Utility functions for time management and logging.
 - Example application demonstrating usage.
 - Dynamic sleep calculation for efficient main loop timing.
+- **TaskTimer utility** for single-shot and periodic timers with callback support.
 
 ## Directory Structure
 
 ```
 src/         # Core scheduler and common utilities
 src/common/  # Shared type definitions, macros, and time utilities
-example/     # Sample application using the scheduler
+example/     # Sample application using the scheduler and TaskTimer
 build/       # Build artifacts (created by CMake/Make)
 bin/         # Compiled example binaries
 install/     # Installed library and binaries (after 'make install')
@@ -33,30 +33,20 @@ install/     # Installed library and binaries (after 'make install')
 
 ### Build Instructions
 
-1. **Clone the repository:**
-   ```sh
-   git clone <repo-url>
-   cd minimal-embedded-scheduler
-   ```
+```sh
+mkdir -p build
+cd build
+cmake ..
+make
+make install
+```
 
-2. **Build with CMake:**
-   ```sh
-   mkdir -p build
-   cd build
-   cmake ..
-   make
-   make install
-   ```
-
-   - The static library `libscheduler.a` will be in `install/lib/`.
-   - The example binary `sample_example.bin` will be in `bin/`.
-
-3. **Run the Example:**
-   ```sh
-   ./bin/sample_example.bin
-   ```
+- The static library `libscheduler.a` will be in `install/lib/`.
+- The example binary `sample_example.bin` will be in `bin/`.
 
 ### Usage
+
+#### Scheduler
 
 - **Initialize the Scheduler:**
   ```c
@@ -75,29 +65,28 @@ install/     # Installed library and binaries (after 'make install')
       Utils_SleepNanoSec(Scheduler_GetDynamicSleep());
   }
   ```
+
+#### TaskTimer
+
+- **Initialize TaskTimer:**
+  ```c
+  TaskTimer_Init();
+  ```
+- **Start a single-shot timer:**
+  ```c
+  TaskTimer_t myTimer;
+  TaskTimer_Start(&myTimer, 5000, my_callback, my_user_data); // 5000ms
+  ```
+- **Stop a timer:**
+  ```c
+  TaskTimer_Stop(&myTimer);
+  ```
+- **Register TaskTimer_Tick with the scheduler for periodic timer updates:**
+  ```c
+  Scheduler_RegisterTask(TaskTimer_Tick, TIME_INTERVAL_100MS);
+  ```
+
 - See `example/sample_main.c` for a complete usage demonstration.
-
-### API Reference
-
-- `Scheduler_Init(timerResolutionMs, pMaxPermittedDelayMs)`
-  Initialize the scheduler with a tick resolution in milliseconds and set the maximum permitted delay.
-
-- `Scheduler_RegisterTask(callback, interval)`
-  Register a periodic task.
-
-- `Scheduler_DeregisterTask(callback)`
-  Remove a task from the scheduler.
-
-- `Scheduler_UpdateTick()`
-  Update tick counters and mark tasks ready to run.
-
-- `Scheduler_GetDynamicSleep()`
-  Returns the recommended sleep time in nanoseconds for the main loop.
-
-- `Scheduler_ExecuteTasksReadyToRun()`
-  Execute all tasks marked as ready.
-
-- Utility functions for time management are in `src/common/common_utils.h`.
 
 ### Logging
 
