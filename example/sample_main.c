@@ -46,10 +46,6 @@ static cBool gRunSuperLoopF = c_TRUE;
  *****************************************************************************/
 static void waitNextTick(void);
 
-// TODO :
-// Add enum to str for status code
-// Add Task Timers feature (in same or separate file)
-
 /* Example: TaskTimer single-shot timer callback */
 static void ExampleTimerCallback(void *userData)
 {
