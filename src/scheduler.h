@@ -82,7 +82,7 @@ typedef struct
  * FUNCTION DECLARATIONS
  *****************************************************************************/
 
-cBool Scheduler_Init(cU32_t timerResolutionMs);
+cBool Scheduler_Init(cU32_t timerResolutionMs, cU32_t *pMaxPermittedDelayMs);
 
 cStatus_e Scheduler_RegisterTask(void (*callback)(void), TimeInterval_e runInterval);
 
@@ -91,6 +91,8 @@ cStatus_e Scheduler_DeregisterTask(void (*callback)(void));
 void Scheduler_Reset(void);
 
 void Scheduler_UpdateTick(void);
+
+cI64_t Scheduler_GetDynamicSleep(void);
 
 void Scheduler_ExecuteTasksReadyToRun(void);
 

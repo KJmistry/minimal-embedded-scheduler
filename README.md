@@ -10,6 +10,7 @@ Designed for simplicity, portability, and ease of integration.
 - Custom type definitions for portability.
 - Utility functions for time management and logging.
 - Example application demonstrating usage.
+- Dynamic sleep calculation for efficient main loop timing.
 
 ## Directory Structure
 
@@ -57,6 +58,11 @@ install/     # Installed library and binaries (after 'make install')
 
 ### Usage
 
+- **Initialize the Scheduler:**
+  ```c
+  cU32_t maxPermittedDelayMs = 1000;
+  Scheduler_Init(TIMER_TICK_RESOLUTION_IN_MS, &maxPermittedDelayMs);
+  ```
 - **Register a Task:**
   ```c
   Scheduler_RegisterTask(my_callback, TIME_INTERVAL_100MS);
@@ -66,15 +72,15 @@ install/     # Installed library and binaries (after 'make install')
   while (running) {
       Scheduler_UpdateTick();
       Scheduler_ExecuteTasksReadyToRun();
-      // Sleep or perform other work
+      Utils_SleepNanoSec(Scheduler_GetDynamicSleep());
   }
   ```
 - See `example/sample_main.c` for a complete usage demonstration.
 
 ### API Reference
 
-- `Scheduler_Init(timerResolutionMs)`
-  Initialize the scheduler with a tick resolution in milliseconds.
+- `Scheduler_Init(timerResolutionMs, pMaxPermittedDelayMs)`
+  Initialize the scheduler with a tick resolution in milliseconds and set the maximum permitted delay.
 
 - `Scheduler_RegisterTask(callback, interval)`
   Register a periodic task.
@@ -84,6 +90,9 @@ install/     # Installed library and binaries (after 'make install')
 
 - `Scheduler_UpdateTick()`
   Update tick counters and mark tasks ready to run.
+
+- `Scheduler_GetDynamicSleep()`
+  Returns the recommended sleep time in nanoseconds for the main loop.
 
 - `Scheduler_ExecuteTasksReadyToRun()`
   Execute all tasks marked as ready.

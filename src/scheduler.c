@@ -26,26 +26,38 @@
 /** Maximum allowed clock resolution by platform should not exceed 1000 millisec */
 #define CLOCK_RESOLUTION_MS_MAX     1000
 
+/** Minimum sleep of application super loop in ns */
+#define	BASE_SLEEP_TIME_IN_NS       (1000000LL)
+
 /*****************************************************************************
  * VARIABLES
  *****************************************************************************/
-/** Timer Resolution */
-cU32_t gTimerResolutionInMillisec = 0;
+/** Timer Resolution Ms */
+static cU32_t gTimerResolutionInMilliSec = 0;
+
+/** Timer Resolution Ns */
+static cI64_t gTimerResolutionInNanoSec = 0;
+
+/** Max permitted delay of scheduler */
+static cU32_t gMaxPermittedDelayMilliSec = 0;
 
 /** Monotonic clock reference time */
-cU64_t gLastMonotonicTimeInNanoSec = 0;
+static cU64_t gLastMonotonicTimeInNanoSec = 0;
 
 /** Time Since Epoch clock reference time */
-struct tm gLastTimeRefSinceEpoch;
+static struct tm gLastTimeRefSinceEpoch;
 
 /** Elapsed nano sec Since Update Tick called Last */
-cU64_t gElapsedNanoSec = 0;
+static cU64_t gElapsedNanoSec = 0;
 
 /** schedule task desc */
-ScheduleTask_t gTaskList[SCHEDULED_TASKS_MAX];
+static ScheduleTask_t gTaskList[SCHEDULED_TASKS_MAX];
 
 /** total count of registered task */
-cU8_t gTaskCnt = 0;
+static cU8_t gTaskCnt = 0;
+
+/** Time reference from beginning of caller super loop */
+static cI64_t gBeginTime = 0;
 
 /*****************************************************************************
  * FUNCTION DECLARATIONS
@@ -61,9 +73,10 @@ static void reshuffleTaskList(void);
 /**
  * @brief Initializes task scheduler
  * @param timerResolutionMs - Timer resolution in millisec
+ * @param pMaxPermittedDelayMs - Max permitted scheduler delay in millisec
  * @return Return success or failure
  */
-cBool Scheduler_Init(cU32_t timerResolutionMs)
+cBool Scheduler_Init(cU32_t timerResolutionMs, cU32_t *pMaxPermittedDelayMs)
 {
     cU8_t taskId;
     struct timespec resolution;
@@ -105,7 +118,21 @@ cBool Scheduler_Init(cU32_t timerResolutionMs)
     }
 
     /* Save the Timer Resolution in milli sec */
-    gTimerResolutionInMillisec = timerResolutionMs;
+    gTimerResolutionInMilliSec = timerResolutionMs;
+
+    /* Save the Timer Resolution in nano sec */
+    gTimerResolutionInNanoSec = (cU64_t) (((cU64_t)gTimerResolutionInMilliSec) * NANO_SECONDS_PER_MILLI_SECOND);
+
+    if (NULL != pMaxPermittedDelayMs)
+    {
+        /* Save max permitted delay in milli sec */
+        gMaxPermittedDelayMilliSec = *pMaxPermittedDelayMs;
+    }
+    else
+    {
+        /* Default value to 100 times of timer resolution if not provided */
+        gMaxPermittedDelayMilliSec = gTimerResolutionInMilliSec * 100;
+    }
 
     return (c_TRUE);
 }
@@ -156,15 +183,15 @@ cStatus_e Scheduler_RegisterTask(void (*callback)(void), TimeInterval_e runInter
         switch (runInterval)
         {
             case TIME_INTERVAL_10MS:
-                gTaskList[taskId].clockTick.clockTicksThreshold = (10 / gTimerResolutionInMillisec);
+                gTaskList[taskId].clockTick.clockTicksThreshold = (10 / gTimerResolutionInMilliSec);
                 break;
 
             case TIME_INTERVAL_20MS:
-                gTaskList[taskId].clockTick.clockTicksThreshold = (20 / gTimerResolutionInMillisec);
+                gTaskList[taskId].clockTick.clockTicksThreshold = (20 / gTimerResolutionInMilliSec);
                 break;
 
             case TIME_INTERVAL_100MS:
-                gTaskList[taskId].clockTick.clockTicksThreshold = (100 / gTimerResolutionInMillisec);
+                gTaskList[taskId].clockTick.clockTicksThreshold = (100 / gTimerResolutionInMilliSec);
                 break;
 
             default:
@@ -238,6 +265,9 @@ void Scheduler_Reset(void)
 {
     cU8_t taskId;
 
+    /* Set begin time as current time for reference to calculate dynamic sleep */
+    gBeginTime = Utils_GetMonotonicTimeInNanoSec();
+
     /* Get the Time Since Epoch */
     Utils_GetTimeSinceEpoch(&gLastTimeRefSinceEpoch);
 
@@ -263,14 +293,10 @@ void Scheduler_Reset(void)
  */
 void Scheduler_UpdateTick(void)
 {
-    cU64_t timerResolutionInNanoSec = 0;
     cU64_t curMonotonicTimeInNanSec = 0;
     cU8_t taskId;
     cU32_t timerEvents = 0;
     struct tm curTimeStamp;
-
-    /* Save the Timer Resolution in nanosec for easy calculation */
-    timerResolutionInNanoSec = (cU64_t) (((cU64_t)gTimerResolutionInMillisec) * NANO_SECONDS_PER_MILLI_SECOND);
 
     /* Get Current Monotonic time in nano sec */
     curMonotonicTimeInNanSec = Utils_GetMonotonicTimeInNanoSec();
@@ -279,12 +305,12 @@ void Scheduler_UpdateTick(void)
     gElapsedNanoSec += (curMonotonicTimeInNanSec - gLastMonotonicTimeInNanoSec);
 
     /* Now check the difference */
-    if (gElapsedNanoSec >= timerResolutionInNanoSec)
+    if (gElapsedNanoSec >= gTimerResolutionInNanoSec)
     {
         do
         {
             /* Decrement Elapsed time */
-            gElapsedNanoSec -= timerResolutionInNanoSec;
+            gElapsedNanoSec -= gTimerResolutionInNanoSec;
 
             /* Increment clock tick count */
             for (taskId = 0; taskId < gTaskCnt; taskId++)
@@ -292,7 +318,7 @@ void Scheduler_UpdateTick(void)
                 gTaskList[taskId].clockTick.clockTicksCnt++;
             }
 
-        } while (gElapsedNanoSec >= timerResolutionInNanoSec);
+        } while (gElapsedNanoSec >= gTimerResolutionInNanoSec);
 
 
         /* Compare clock tick cnt with threshold cnt */
@@ -346,6 +372,48 @@ void Scheduler_UpdateTick(void)
 
     /* save current time as reference */
     gLastMonotonicTimeInNanoSec = curMonotonicTimeInNanSec;
+}
+
+//----------------------------------------------------------------------------
+/**
+ * @brief Function that calculates the dynamic sleep time
+ * @return Sleep time in nanoseconds
+ */
+cI64_t Scheduler_GetDynamicSleep(void)
+{
+    static cI64_t diffNs;
+    static cU64_t endTime;
+
+    /* Add the nanoseconds of timer tick resolution to derive the Sleep */
+    gBeginTime += gTimerResolutionInNanoSec;
+
+    /* get current time */
+    endTime = Utils_GetMonotonicTimeInNanoSec();
+
+    /* Get the Difference */
+    diffNs = gBeginTime - endTime;
+
+    if (diffNs > 0)
+    {
+        return (diffNs);
+    }
+    else
+    {
+        /* convert into positive */
+        diffNs = ((-diffNs) / NANO_SECONDS_PER_MILLI_SECOND);
+        if (diffNs > 0)
+        {
+            /* Add warning only if we're delayed by minimum heart-beat interval */
+            if (diffNs > gMaxPermittedDelayMilliSec)
+            {
+                WPRINT("we are running late by [%d]ms", (cI32_t)diffNs);
+            }
+
+            /* If we are running late by few ms then we will not sleep for 10 ms but only for 1 ms &
+             * execute the tasks again. Without this 1 ms sleep, CPU usage may go around 100%. */
+            return (BASE_SLEEP_TIME_IN_NS);
+        }
+    }
 }
 
 //----------------------------------------------------------------------------
