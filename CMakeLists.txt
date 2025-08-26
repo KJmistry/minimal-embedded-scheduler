@@ -21,7 +21,7 @@ include_directories(${SRC_DIR}/common)
 add_library(scheduler STATIC ${SRCS})
 
 # Set library output name to libscheduler.a
-set_target_properties(scheduler PROPERTIES OUTPUT_NAME "libscheduler")
+set_target_properties(scheduler PROPERTIES OUTPUT_NAME "scheduler")
 
 # Install rule for the static library to local install directory
 install(TARGETS scheduler ARCHIVE DESTINATION ${CMAKE_SOURCE_DIR}/install/lib)
